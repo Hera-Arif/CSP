@@ -1,0 +1,55 @@
+{
+  "project_info": {
+    "project_number": "19042397320",
+    "firebase_url": "https://icleanindia-be5ff.firebaseio.com",
+    "project_id": "icleanindia-be5ff",
+    "storage_bucket": "icleanindia-be5ff.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:19042397320:android:a44583977cf5800d",
+        "android_client_info": {
+          "package_name": "com.example.android.csp"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "19042397320-eahffadh62jv32jlfk7dflr8sljbi7ag.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.android.csp",
+            "certificate_hash": "4e918c79b2e7386f7f3a75fc1a10adf93292366b"
+          }
+        },
+        {
+          "client_id": "19042397320-renn2058nu7qsjgb9oetjv7j7ka9b6hd.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCt70sO9qiTNExBRJP9vxG0FtNJKqzDOxE"
+        }
+      ],
+      "services": {
+        "analytics_service": {
+          "status": 1
+        },
+        "appinvite_service": {
+          "status": 2,
+          "other_platform_oauth_client": [
+            {
+              "client_id": "19042397320-renn2058nu7qsjgb9oetjv7j7ka9b6hd.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        },
+        "ads_service": {
+          "status": 2
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
