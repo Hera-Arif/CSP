@@ -1,5 +1,7 @@
 package com.example.android.csp;
 
+import android.app.ActivityManager;
+import android.content.Context;
 import android.graphics.Point;
 import android.support.annotation.NonNull;
 import android.support.v7.app.AppCompatActivity;
@@ -166,6 +168,23 @@ public class MainActivity extends AppCompatActivity {
             }
         } );
 
+       Intent mServiceIntent = new Intent(this, GeofenceIntentService.class);
+        if (!isMyServiceRunning(GeofenceIntentService.class)) {
+            // TODO : Start service
+           // startService(mServiceIntent);
+        }
+    }
+
+    private boolean isMyServiceRunning(Class<?> serviceClass) {
+        ActivityManager manager = (ActivityManager) getSystemService(Context.ACTIVITY_SERVICE);
+        for (ActivityManager.RunningServiceInfo service : manager.getRunningServices(Integer.MAX_VALUE)) {
+            if (serviceClass.getName().equals(service.service.getClassName())) {
+                Log.d ("Never Ending Service", "isMyServiceRunning?"+true+"");
+                return true;
+            }
+        }
+        Log.d ("Never Ending Service", "isMyServiceRunning?"+false+"");
+        return false;
     }
 
 

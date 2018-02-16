@@ -1,6 +1,8 @@
 package com.example.android.csp;
 
 import android.content.Intent;
+import android.icu.text.SimpleDateFormat;
+import android.icu.util.TimeUnit;
 import android.net.Uri;
 import android.os.Bundle;
 import android.support.design.widget.FloatingActionButton;
@@ -8,6 +10,7 @@ import android.support.design.widget.Snackbar;
 import android.support.v4.app.FragmentManager;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
+import android.text.format.DateFormat;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -28,10 +31,20 @@ import android.widget.Toast;
 import com.bumptech.glide.Glide;
 import com.example.android.csp.Fragment.AuthorityDisplayFragment;
 import com.example.android.csp.Fragment.PostsFragment;
+import com.example.android.csp.utilities.NotificationUtils;
 import com.firebase.ui.database.FirebaseRecyclerAdapter;
 import com.firebase.ui.database.FirebaseRecyclerOptions;
+import com.google.firebase.database.ChildEventListener;
+import com.google.firebase.database.DataSnapshot;
+import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
+import com.jakewharton.threetenabp.AndroidThreeTen;
+
+import org.threeten.bp.DateTimeUtils;
+import org.threeten.bp.Instant;
+
+import java.util.Date;
 
 import static java.security.AccessController.getContext;
 
@@ -45,9 +58,22 @@ public class AuthorityDisplayActivity extends AppCompatActivity
     private DatabaseReference mRef;
 
 
-    final private String TYPE_POTHOLES = "Pothole";
+    final public static String TYPE_POTHOLES = "Pothole";
 
-    final private String TYPE_GARBAGE = "Garbage";
+    final public static String TYPE_GARBAGE = "Garbage";
+
+    final public static String TYPE_PENDING = "Pending";
+
+    final public static String TYPE_COMPLETED = "Completed";
+
+    final public static String KEY_AUTHORITY_NOTIFIED = "isFirstTime";
+
+    private static String mNotificationTitle= "Check out the Pending Section!";
+
+    private static String  mNotificationBody= "There are some post whose Service Level Agreement has been extended, check out the pending section to fix them";
+
+
+    DatabaseReference mCompleteRef;
 
     static String mTypeSelected;
 
@@ -55,12 +81,18 @@ public class AuthorityDisplayActivity extends AppCompatActivity
 
     private int RC_SIGNOUT= 4000;
 
+    boolean isChildChanged;
+
+    int numDays;
+
     @Override
-    protected void onCreate(Bundle savedInstanceState) {
+    protected void onCreate(final Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_authority_display);
         Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
+
+        isChildChanged= false;
 
         /*FloatingActionButton fab = (FloatingActionButton) findViewById(R.id.fab);
         fab.setOnClickListener(new View.OnClickListener() {
@@ -83,12 +115,154 @@ public class AuthorityDisplayActivity extends AppCompatActivity
 
         mTypeSelected=TYPE_POTHOLES;
 
+        AndroidThreeTen.init(this);
 
-/*
+
+
+
         mDatabase = FirebaseDatabase.getInstance();
 
-        mRef =  mDatabase.getReference().child("Non-VerifiedPosts");
+        mRef =  mDatabase.getReference();
 
+
+        mRef.addChildEventListener(new ChildEventListener() {
+            @Override
+            public void onChildAdded(DataSnapshot dataSnapshot, String s) {
+                // Todo Add notification
+
+
+                Log.d("AuthorityDisplay", "Inside child added");
+
+
+                for (DataSnapshot data : dataSnapshot.getChildren()) {
+
+
+                    Uri uri = Uri.parse(data.getRef().getParent().toString());
+                    if (uri.getLastPathSegment().equals("VerifiedPosts") ) {
+
+
+                        //data.getRef().toString()
+
+                        Log.d("AuthorityDisplay", "Ref :" + data.getRef().getParent().toString());
+
+                        Log.d("AuthorityDisplay", "Data :" + data.toString());
+
+                        AuthorityPostUpdateMessage post = data.getValue(AuthorityPostUpdateMessage.class);
+
+                        if (post.getType().equals(TYPE_POTHOLES)){
+                            numDays= 15;
+                        }
+                        else {
+                            numDays=7;
+                        }
+
+                        String strdate1 = post.getCreationDate();
+
+                        // SimpleDateFormat date = new SimpleDateFormat(strdate);
+
+                        Instant instant = Instant.now();
+                        Date current_date = DateTimeUtils.toDate(instant);
+
+                        String strdate2 = current_date.toString();
+
+                        //long diff =1;java.util.concurrent.TimeUnit.MICROSECONDS.toDays(epoch_date-post.creationDate);
+                        if (compareDates(strdate1, strdate2, numDays)) {
+
+                            mCompleteRef = mDatabase.getReference().child("Pending");
+
+                            mCompleteRef.child(post.getPostKey()).setValue(post);
+
+                            if (!(savedInstanceState != null && savedInstanceState.containsKey(KEY_AUTHORITY_NOTIFIED) && savedInstanceState.getBoolean(KEY_AUTHORITY_NOTIFIED))) {
+
+                                // savedInstanceState.putBoolean(KEY_AUTHORITY_NOTIFIED,true);
+                                NotificationUtils.remindUserThroughNotification(AuthorityDisplayActivity.this, mNotificationTitle,mNotificationBody);
+                                Log.d("AuthorityDisplay", "Data exceeds 15 days- inside childadded");
+
+                            }
+
+                            //  Log.d("AuthorityDisplay",diff+"Data: "+data.toString());
+                        }
+                    }
+                }
+            }
+
+            @Override
+            public void onChildChanged(DataSnapshot dataSnapshot, String s) {
+
+                Log.d("AuthorityDisplay", "Inside child changed");
+
+                for(DataSnapshot data :dataSnapshot.getChildren() ){
+
+
+                    Uri uri = Uri.parse(data.getRef().getParent().toString());
+                    if (uri.getLastPathSegment().equals("VerifiedPosts") ) {
+
+
+                        //data.getRef().toString()
+
+                        Log.d("AuthorityDisplay", "Ref :" + data.getRef().getParent().toString());
+
+                        Log.d("AuthorityDisplay", "Data :" + data.toString());
+
+                        AuthorityPostUpdateMessage post = data.getValue(AuthorityPostUpdateMessage.class);
+
+                        if (post.getType().equals(TYPE_POTHOLES)){
+                            numDays= 15;
+                        }
+                        else {
+                            numDays=7;
+                        }
+
+                        String strdate1 = post.getCreationDate();
+
+                        // SimpleDateFormat date = new SimpleDateFormat(strdate);
+
+                        Instant instant = Instant.now();
+                        Date current_date = DateTimeUtils.toDate(instant);
+
+                        String strdate2 = current_date.toString();
+
+                        //long diff =1;java.util.concurrent.TimeUnit.MICROSECONDS.toDays(epoch_date-post.creationDate);
+                        if (compareDates(strdate1, strdate2, numDays)) {
+
+                            mCompleteRef = mDatabase.getReference().child("Pending");
+
+                            mCompleteRef.child(post.getPostKey()).setValue(post);
+
+                           // if ( (!(savedInstanceState != null && savedInstanceState.containsKey(KEY_AUTHORITY_NOTIFIED) && savedInstanceState.getBoolean(KEY_AUTHORITY_NOTIFIED) ) || !isChildChanged )) {
+
+                                // savedInstanceState.putBoolean(KEY_AUTHORITY_NOTIFIED,true);
+                            NotificationUtils.remindUserThroughNotification(AuthorityDisplayActivity.this, mNotificationTitle,mNotificationBody);
+                                Log.d("AuthorityDisplay", "Data exceeds 15 days- inside childadded");
+
+                                isChildChanged =true;
+
+                            //}
+
+                            //  Log.d("AuthorityDisplay",diff+"Data: "+data.toString());
+                        }
+                    }
+                    //  Log.d("AuthorityDisplay",diff+"Data: "+data.toString());
+                }
+
+            }
+
+            @Override
+            public void onChildRemoved(DataSnapshot dataSnapshot) {
+
+            }
+
+            @Override
+            public void onChildMoved(DataSnapshot dataSnapshot, String s) {
+
+            }
+
+            @Override
+            public void onCancelled(DatabaseError databaseError) {
+
+            }
+        });
+/*
         mRecyclerview = (RecyclerView) findViewById(R.id.authority_recyclerview);
         mRecyclerview.setHasFixedSize(true);
         mRecyclerview.setLayoutManager(new LinearLayoutManager(this));
@@ -201,6 +375,44 @@ public class AuthorityDisplayActivity extends AppCompatActivity
                 .commit();
 
     }
+    /**
+     * Compares if strdate2 is greater than strdate1 by numDays
+     *
+     * Note- It works for consecutive months only and assumes the fact that strdate2> strdate1
+     */
+
+    private boolean compareDates(String strdate1, String strdate2, int numDays) {
+
+
+        String[] splitDate1 =strdate1.split(" ");
+
+        String[] splitDate2 =strdate2.split(" ");
+
+        int day1 = Integer.parseInt(splitDate1[2]);
+
+        int day2 = Integer.parseInt(splitDate2[2]);
+
+        if (!splitDate1[1].equals(splitDate2[1]) ){
+
+            day2 +=30;
+        }
+        Log.d("AuthorityDisplay","Diff:  "+day2+" "+day1+" "+(day2-day1));
+        if(day2-day1>numDays){
+            return true;
+        }
+
+        return false;
+    }
+
+    @Override
+    public void onSaveInstanceState(Bundle savedInstanceState) {
+        super.onSaveInstanceState(savedInstanceState);
+        // Save UI state changes to the savedInstanceState.
+        // This bundle will be passed to onCreate if the process is
+        // killed and restarted.
+        savedInstanceState.putBoolean(KEY_AUTHORITY_NOTIFIED,true);
+        // etc.
+    }
 
     public static String getTypeSelected() {
         return mTypeSelected;
@@ -245,6 +457,11 @@ public class AuthorityDisplayActivity extends AppCompatActivity
 
         }else if(id==R.id.nav_show_garbage){
             mTypeSelected= TYPE_GARBAGE;
+        }else if(id==R.id.nav_show_completed){
+            mTypeSelected=TYPE_COMPLETED;
+
+        }else if(id==R.id.nav_show_pending){
+            mTypeSelected= TYPE_PENDING;
         }
 /*
         if (id == R.id.nav_camera) {
@@ -278,7 +495,7 @@ public class AuthorityDisplayActivity extends AppCompatActivity
 
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
-        super.onActivityResult(requestCode, resultCode, data);
+       // super.onActivityResult(requestCode, resultCode, data);
         if(requestCode==RC_SIGNOUT){
             finish();
         }

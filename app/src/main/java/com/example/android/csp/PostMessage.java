@@ -15,6 +15,13 @@
  */
 package com.example.android.csp;
 
+import com.google.firebase.database.Exclude;
+import com.google.firebase.database.ServerValue;
+import com.jakewharton.threetenabp.AndroidThreeTen;
+
+import java.time.Instant;
+import java.util.Map;
+
 public class PostMessage {
 
       String postKey;
@@ -31,13 +38,15 @@ public class PostMessage {
      int numVerified;
     boolean isVerified;
 
-
+    String creationDate;
 
     public PostMessage(){
     }
     
 
-    public PostMessage(String postKey , String userId, String name, String address, String photoUrl , String type, String placeId, double latitude, double longitude) {
+    public PostMessage(String postKey , String userId, String name,
+                       String address, String photoUrl , String type,
+                       String placeId, double latitude, double longitude, String creationDate) {
         this.postKey = postKey;
 
         this.address = address;
@@ -49,6 +58,8 @@ public class PostMessage {
         this.placeId = placeId;
         this.latitude = latitude;
         this.longitude = longitude;
+
+        this.creationDate= creationDate;
         this.isVerified= false;
     }
 
@@ -139,5 +150,16 @@ public class PostMessage {
 
     public void setVerified(boolean verified) {
         isVerified = verified;
+    }
+
+
+
+
+
+    public String getCreationDate() {
+        return creationDate;
+    }
+    public void setCreationDate(String creationDate) {
+        this.creationDate= creationDate;
     }
 }

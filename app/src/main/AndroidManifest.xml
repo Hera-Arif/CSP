@@ -50,7 +50,24 @@
             android:label="@string/title_activity_authority_display"
             android:theme="@style/AppTheme.NoActionBar" />
         <activity android:name=".StatusUpdateActivity" />
-        <activity android:name=".StatusViewActivity"></activity>
+        <activity android:name=".StatusViewActivity" />
+
+        <service
+            android:name=".GeofenceIntentService"
+            android:enabled="true"></service>
+
+        <receiver
+            android:name=".GeofenceBroadcastReciever"
+            android:enabled="true"
+            android:exported="true"
+            android:label="RestartServiceWhenStopped">
+            <intent-filter>
+                <action android:name="uk.ac.shef.oak.ActivityRecognition.RestartSensor" />
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+            </intent-filter>
+        </receiver>
+
+        <activity android:name=".OpenedPostActivity"></activity>
     </application>
 
 </manifest>

@@ -15,6 +15,8 @@
  */
 package com.example.android.csp.utilities;
 
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.net.Uri;
 
 import com.example.android.csp.DisplayPost;
@@ -35,11 +37,15 @@ import okhttp3.Response;
  */
 public class NetworkUtils {
 
-    final static String BASE_URL ="http://192.168.0.102:5000/";
+
+    final static String BASE_URL ="http://192.168.0.101:5000/";
            // "http://(ipaddress ipv4):5000/search/";
 
     final static String SAVE_URL = BASE_URL+"save";
     final static String CLASSIFY_URL = BASE_URL+"classify_image";
+    final static String IMAGE_REQ_URL = BASE_URL+"get_image";
+    public static final int GET_CLASSIFIER_RESPONSE = 10111 ;
+    public static final int GET_IMAGE_RESPONSE = 20111 ;
 
     public static URL buildUrl() {
         Uri builtUri = Uri.parse(BASE_URL);
@@ -54,6 +60,7 @@ public class NetworkUtils {
 
         return url;
     }
+
 
     public static URL buildUrl(String strUrl) {
         Uri builtUri = Uri.parse(strUrl);
@@ -76,7 +83,50 @@ public class NetworkUtils {
      * @return The contents of the HTTP response.
      * @throws IOException Related to network and stream reading
      */
-    public static String getResponseFromHttpUrl(URL url) throws IOException {
+    public static Object getResponseFromHttpUrl(URL url , int reqId) throws IOException {
+
+        if(reqId==GET_CLASSIFIER_RESPONSE){
+           return postImageAndClassifierResponse(url);
+        }else if(reqId==GET_IMAGE_RESPONSE){
+
+         return getSavedImageReponse(url);
+        }
+
+        return null;
+    }
+
+    private static Bitmap getSavedImageReponse(URL url) {
+
+        Bitmap resp;
+        try {
+          /*  InputStream in = urlConnection.getInputStream();
+
+            Scanner scanner = new Scanner(in);
+            scanner.useDelimiter("\\A");
+
+            boolean hasInput = scanner.hasNext();
+
+            if (hasInput) {
+                return scanner.next();
+            } else {
+                return null;
+            }
+*/
+
+            // resp = runClassifier(url);
+            resp = runImageDownloader();
+
+        } catch(Exception e) {
+            //  urlConnection.disconnect();
+            resp=null;
+        }
+
+        return resp;
+    }
+
+
+
+    public static String  postImageAndClassifierResponse(URL url)  {
        // HttpURLConnection urlConnection = (HttpURLConnection) url.openConnection();
         String resp;
         try {
@@ -133,5 +183,43 @@ public class NetworkUtils {
         String s= response.body().string();
 
         return s;
+    }
+
+
+
+    static Bitmap runImageDownloader() throws IOException {
+
+        // Post image to flask server
+        URL url = buildUrl(IMAGE_REQ_URL);
+        OkHttpClient client = new OkHttpClient();
+       /* Request request = new Request.Builder()
+                .url(url)
+                .post(RequestBody.create(MediaType.parse("image/jpeg"), DisplayPost.mPhotoFile) )
+                .build();
+*/
+        Request request = new Request.Builder()
+                .url(url)
+                .get()
+                .build();
+
+
+
+        Response response = client.newCall(request).execute();
+
+        // GET request for data obtained after image Classification
+      /*  url = buildUrl(CLASSIFY_URL);
+
+        request = new Request.Builder()
+                .url(url)
+                .get()
+                .build();
+
+
+        response = client.newCall(request).execute();
+        */
+       // BitmapFactory.decodeStream()
+        Bitmap bitmap=  BitmapFactory.decodeStream(response.body().byteStream() );
+
+        return bitmap;
     }
 }

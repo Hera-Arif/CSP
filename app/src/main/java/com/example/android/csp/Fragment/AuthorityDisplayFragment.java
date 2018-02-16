@@ -12,6 +12,7 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
+import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -20,14 +21,19 @@ import android.widget.Toast;
 import com.bumptech.glide.Glide;
 import com.example.android.csp.AuthorityDisplayActivity;
 import com.example.android.csp.AuthorityPostUpdateMessage;
+import com.example.android.csp.OpenedPostActivity;
 import com.example.android.csp.PostMessage;
 import com.example.android.csp.R;
 import com.example.android.csp.StatusUpdateActivity;
 import com.example.android.csp.StatusViewActivity;
 import com.firebase.ui.database.FirebaseRecyclerAdapter;
 import com.firebase.ui.database.FirebaseRecyclerOptions;
+import com.google.firebase.database.DataSnapshot;
+import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
+import com.google.firebase.database.Query;
+import com.google.firebase.database.ValueEventListener;
 
 /**
  * Created by Mapkar on 12/23/2017.
@@ -73,7 +79,7 @@ public class AuthorityDisplayFragment extends Fragment {
 
         mDatabase = FirebaseDatabase.getInstance();
 
-        mRef =  mDatabase.getReference().child("Non-VerifiedPosts");
+       // mRef =  mDatabase.getReference().child("Non-VerifiedPosts");
 
         mRecyclerview = (RecyclerView) rootView.findViewById(R.id.authority_recyclerview);
         mRecyclerview.setHasFixedSize(true);
@@ -87,13 +93,48 @@ public class AuthorityDisplayFragment extends Fragment {
     private void initializeAdapter() {
         mTypeSelected = AuthorityDisplayActivity.getTypeSelected();
         Toast.makeText(getActivity(),"Value of mTypeselected is :"+mTypeSelected.toString(),Toast.LENGTH_LONG).show();
+
+        //FirebaseRecyclerAdapter<AuthorityPostUpdateMessage,AuthorityDisplayFragment.PostViewHolder> adapter;
+        Query query;
         if(mTypeSelected!=null){
 
+            if(mTypeSelected==AuthorityDisplayActivity.TYPE_POTHOLES || mTypeSelected ==AuthorityDisplayActivity.TYPE_GARBAGE){
 
-            mRef =  mDatabase.getReference().child("VerifiedPosts").child(mTypeSelected);
+                mRef =  mDatabase.getReference().child("VerifiedPosts");
+                 query = mRef.orderByChild("type").equalTo(mTypeSelected);
+                /* query.addListenerForSingleValueEvent(new ValueEventListener() {
+                     @Override
+                     public void onDataChange(DataSnapshot dataSnapshot) {
+                        // Log.d("AuthorityDisplayFragme","data:"+dataSnapshot.toString());
+                     }
+
+                     @Override
+                     public void onCancelled(DatabaseError databaseError) {
+
+                     }
+                 });*/
+            }
+            else{
+                mRef =  mDatabase.getReference().child(mTypeSelected);
+                query = mRef.orderByKey();
+
+              /*  query.addListenerForSingleValueEvent(new ValueEventListener() {
+                    @Override
+                    public void onDataChange(DataSnapshot dataSnapshot) {
+                 //       Log.d("AuthorityDisplayFragme","data:"+dataSnapshot.toString());
+                    }
+
+                    @Override
+                    public void onCancelled(DatabaseError databaseError) {
+
+                    }
+                });*/
+
+            }
+          //  mRef =  mDatabase.getReference().child("VerifiedPosts").child(mTypeSelected);
 
             FirebaseRecyclerAdapter<AuthorityPostUpdateMessage,AuthorityDisplayFragment.PostViewHolder> adapter = new FirebaseRecyclerAdapter<AuthorityPostUpdateMessage, AuthorityDisplayFragment.PostViewHolder>(
-                    new  FirebaseRecyclerOptions.Builder<AuthorityPostUpdateMessage>().setQuery(mRef,AuthorityPostUpdateMessage.class).build()) {
+                    new  FirebaseRecyclerOptions.Builder<AuthorityPostUpdateMessage>().setQuery(query,AuthorityPostUpdateMessage.class).build()) {
 
                 /*       PostMessage.class,
                 R.layout.single_post_layout,
@@ -110,17 +151,37 @@ public class AuthorityDisplayFragment extends Fragment {
 
                     holder.setAddress(model.getAddress() );
 
-                    holder.setImage( Uri.parse(model.getPhotoUrl()), model.getPostKey() );
+                    holder.setImage( Uri.parse(model.getPhotoUrl()), model.getPostKey() , model);
 
-                   /* holder.getVerifyButton().setOnClickListener(new View.OnClickListener() {
+                    if(model.isVerified()){
+
+                        holder.setVerified("YES");
+
+                        holder.getVerifyCount().setVisibility(View.INVISIBLE);
+                    }else {
+                        holder.setVerified("NO");
+                        String str= ""+(3-model.getNumVerified());
+                        holder.getVerifyCount().setText(str);
+                    }
+
+
+                   Button btn = holder.getVerifyButton();
+
+
+                    btn.setText("Update");
+
+                           btn.setOnClickListener(new View.OnClickListener() {
                         @Override
                         public void onClick(View view) {
 
-                            DatabaseReference mVerifiedRef =  mDatabase.getReference().child("VerifiedPosts").child(model.getType());
-                            mVerifiedRef.push().setValue(model);
+                            Intent intent = new Intent(getContext(), StatusUpdateActivity.class);
+                            intent.putExtra("type", getTypeSelected());
+                            intent.putExtra("originalPhotoUri", model.getPhotoUrl());
+                            intent.putExtra("key", model.getPostKey());
+                            startActivity(intent);
                         }
                     });
-                    */
+
                     Log.d("RecyclerView", "onBindViewHolder: "+position);
 
                 }
@@ -153,15 +214,33 @@ public class AuthorityDisplayFragment extends Fragment {
             super(itemView);
             mView = itemView;
 
-            mView.findViewById(R.id.card_view_verify_button).setVisibility(View.INVISIBLE);
+          //  mView.findViewById(R.id.card_view_verify_button).setVisibility(View.INVISIBLE);
 
 
         }
 
-        /*ImageButton getVerifyButton(){
-            return mView.findViewById(R.id.card_view_share_button);
+        Button getVerifyButton(){
+            return (Button) mView.findViewById(R.id.card_view_verify_button);
         }
-        */
+
+
+        void setVerified(String verified){
+            TextView mTextView = (TextView) mView.findViewById(R.id.card_view_isverified);
+
+            if(verified.equals("YES")){
+                TextView mLabelText = (TextView) mView.findViewById(R.id.card_view_verify_count_label);
+                mLabelText.setVisibility(View.INVISIBLE);
+            }
+
+            mTextView.setText(verified);
+        }
+
+        TextView getVerifyCount(){
+            TextView mTextView = (TextView) mView.findViewById(R.id.card_view_verify_count);
+
+            return mTextView;
+
+        }
 
         void setUser(String user){
             TextView mTextView = (TextView) mView.findViewById(R.id.card_view_User_name);
@@ -181,20 +260,38 @@ public class AuthorityDisplayFragment extends Fragment {
             mTextView.setText(address);
         }
 
-        void setImage(final Uri uri, final String key){
+        void setImage(final Uri uri, final String key, final PostMessage model){
             ImageView mImageView = (ImageView) mView.findViewById(R.id.card_view_image);
              Glide.with(getContext()).load(uri).into(mImageView);
 
-            mImageView.setOnClickListener(new View.OnClickListener() {
-                @Override
-                public void onClick(View view) {
-                    Intent intent = new Intent(getContext(), StatusUpdateActivity.class);
-                    intent.putExtra("type",getTypeSelected());
-                    intent.putExtra("originalPhotoUri",uri.toString());
-                    intent.putExtra("key",key);
-                    startActivity(intent);
-                }
-            });
+
+
+                 mImageView.setOnClickListener(new View.OnClickListener() {
+                     @Override
+                     public void onClick(View view) {
+                         if(AuthorityDisplayActivity.getTypeSelected().equals(AuthorityDisplayActivity.TYPE_COMPLETED) ){
+                             Intent intent = new Intent(getContext(), StatusViewActivity.class);
+                             intent.putExtra("key", key);
+                             intent.putExtra("originalPhotoUri", uri.toString());
+                             startActivity(intent);
+                         }else{
+
+                             Intent intent = new Intent(getContext(), OpenedPostActivity.class);
+                             intent.putExtra("key", key);
+                             intent.putExtra("address",model.getAddress() );
+                             intent.putExtra("latitude", model.getLatitude());
+                             intent.putExtra("longitude", model.getLongitude() );
+                             intent.putExtra("type", model.getType());
+                             intent.putExtra("username", model.getName());
+                             intent.putExtra("originalPhotoUri", uri.toString());
+                             startActivity(intent);
+
+                         }
+
+
+                     }
+                 });
+
 
         }
 

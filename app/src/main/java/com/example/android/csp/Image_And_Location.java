@@ -3,6 +3,8 @@ package com.example.android.csp;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.icu.text.SimpleDateFormat;
+import android.icu.util.Calendar;
 import android.location.Address;
 import android.location.Geocoder;
 import android.net.Uri;
@@ -25,6 +27,7 @@ import android.widget.Toast;
 
 import com.bumptech.glide.Glide;
 import com.example.android.csp.utilities.NetworkUtils;
+import com.example.android.csp.utilities.NotificationUtils;
 import com.firebase.ui.auth.AuthUI;
 import com.google.android.gms.location.places.Place;
 import com.google.android.gms.location.places.ui.PlacePicker;
@@ -34,15 +37,22 @@ import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
+import com.google.firebase.database.ServerValue;
 import com.google.firebase.storage.FirebaseStorage;
 import com.google.firebase.storage.StorageReference;
 import com.google.firebase.storage.UploadTask;
+import com.jakewharton.threetenabp.AndroidThreeTen;
 
 import org.json.JSONObject;
+import org.threeten.bp.DateTimeUtils;
+import org.threeten.bp.Instant;
 
 import java.io.IOException;
 import java.net.URL;
+import java.util.Date;
 import java.util.List;
+
+import static com.example.android.csp.AuthorityDisplayActivity.KEY_AUTHORITY_NOTIFIED;
 
 public class Image_And_Location extends AppCompatActivity {
 
@@ -128,11 +138,38 @@ public class Image_And_Location extends AppCompatActivity {
 
         mUser= FirebaseAuth.getInstance().getCurrentUser();
 
+        AndroidThreeTen.init(this);
 
         mProgressBar = (ProgressBar)findViewById(R.id.upload_progressBar);
         mProgressBar.setVisibility(View.INVISIBLE);
 
-        new ClassifierTask().execute(resp);
+
+
+        if (!(savedInstanceState != null && savedInstanceState.containsKey(KEY_AUTHORITY_NOTIFIED) && savedInstanceState.getBoolean(KEY_AUTHORITY_NOTIFIED))) {
+
+            // savedInstanceState.putBoolean(KEY_AUTHORITY_NOTIFIED,true);
+            //new ClassifierGetTask().execute(resp);
+
+            isClassified= true;
+            new ClassifierPostTask().execute(resp);
+            //mbutton.setEnabled(false);
+            mDescription.setVisibility(View.VISIBLE);
+            mbutton.setVisibility(View.VISIBLE);
+
+
+            PlacePicker.IntentBuilder builder = new PlacePicker.IntentBuilder();
+            try {
+                mProgressBar.setEnabled(true);
+                mProgressBar.setVisibility(View.VISIBLE);
+                startActivityForResult(builder.build(this), PLACE_PICKER_REQUEST);
+            }catch(Exception e){
+                e.printStackTrace();
+            }
+
+        }
+
+     /*  // new ClassifierPostTask().execute(resp);
+        new ClassifierGetTask().execute(resp);
         isClassified= true;
         //mbutton.setEnabled(false);
         mDescription.setVisibility(View.VISIBLE);
@@ -143,12 +180,23 @@ public class Image_And_Location extends AppCompatActivity {
         try {
             mProgressBar.setEnabled(true);
             mProgressBar.setVisibility(View.VISIBLE);
-            startActivityForResult(builder.build(this), PLACE_PICKER_REQUEST);
+           startActivityForResult(builder.build(this), PLACE_PICKER_REQUEST);
         }catch(Exception e){
             e.printStackTrace();
         }
+*/
+
+    }
 
 
+    @Override
+    public void onSaveInstanceState(Bundle savedInstanceState) {
+        super.onSaveInstanceState(savedInstanceState);
+        // Save UI state changes to the savedInstanceState.
+        // This bundle will be passed to onCreate if the process is
+        // killed and restarted.
+        savedInstanceState.putBoolean(KEY_AUTHORITY_NOTIFIED,true);
+        // etc.
     }
 
     @Override
@@ -245,6 +293,16 @@ public class Image_And_Location extends AppCompatActivity {
                 mdownloadUri=taskSnapshot.getDownloadUrl();
                 if(mdownloadUri!=null){
 
+                    Instant instant =Instant.now();
+                    long epoch_date = instant.getEpochSecond();
+
+                    Date date = DateTimeUtils.toDate(instant);
+
+                  /*  Calendar calendar = Calendar.getInstance();
+                    SimpleDateFormat mdformat = new SimpleDateFormat("yyyy / MM / dd ");
+                    String strDate = "Current Date : " + mdformat.format(calendar.getTime());*/
+
+                  Toast.makeText(getApplicationContext(),"Date:"+date.toString(),Toast.LENGTH_LONG).show();
                     DatabaseReference keyRef = mNonVerifiedPostRef.push();
                     String key =keyRef.getKey();
 
@@ -253,14 +311,16 @@ public class Image_And_Location extends AppCompatActivity {
                             mDescription.getText().toString(),
                             mdownloadUri.toString(),
                             mTypeSelected, mPlace.getId(),
-                            mPlace.getLatLng().latitude, mPlace.getLatLng().longitude);
+                            mPlace.getLatLng().latitude, mPlace.getLatLng().longitude,
+                            date.toString());
 
                     Toast.makeText(Image_And_Location.this, key, Toast.LENGTH_LONG).show();
                             keyRef.setValue(post);
                     mProgressBar.setEnabled(false);
                     mProgressBar.setVisibility(View.INVISIBLE);
 
-                    startActivityForResult(new Intent(Image_And_Location.this,DisplayPost.class),RC_POST_UPLOADED);
+                    finish();
+                   // startActivityForResult(new Intent(Image_And_Location.this,DisplayPost.class),RC_POST_UPLOADED);
                 }else{
                     Toast.makeText(Image_And_Location.this,"Image upload failed!",Toast.LENGTH_LONG).show();
                 }
@@ -280,7 +340,7 @@ public class Image_And_Location extends AppCompatActivity {
 
 
 
-    public class ClassifierTask extends AsyncTask<URL, Void, String> {
+    public class ClassifierPostTask extends AsyncTask<URL, Void, String> {
 
 
         @Override
@@ -288,7 +348,7 @@ public class Image_And_Location extends AppCompatActivity {
             URL searchUrl = params[0];
             String searchResults = null;
             try {
-                searchResults = NetworkUtils.getResponseFromHttpUrl(searchUrl);
+                searchResults = (String) NetworkUtils.getResponseFromHttpUrl(searchUrl,NetworkUtils.GET_CLASSIFIER_RESPONSE);
             } catch (IOException e) {
                 e.printStackTrace();
             }
@@ -303,6 +363,8 @@ public class Image_And_Location extends AppCompatActivity {
         // COMPLETED (3) Override onPostExecute to display the results in the TextView
         @Override
         protected void onPostExecute(String searchResults) {
+
+
             String type="Pothole";
             String confidence="--";
            if (searchResults != null && !searchResults.equals("")) {
@@ -324,4 +386,55 @@ public class Image_And_Location extends AppCompatActivity {
     }
 
 
-}
+    public class ClassifierGetTask extends AsyncTask<URL, Void, Bitmap> {
+
+
+        @Override
+        protected Bitmap doInBackground(URL... params) {
+            URL searchUrl = params[0];
+            Bitmap searchResults = null;
+            try {
+                searchResults = (Bitmap)NetworkUtils.getResponseFromHttpUrl(searchUrl , NetworkUtils.GET_IMAGE_RESPONSE);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+          //  if(searchResults!=null)
+                //Log.d("Url:", searchResults);
+            //result=searchResults;
+
+            Log.d("ImageAndlocation","Inside Do in background");
+
+            return searchResults;
+        }
+
+        // COMPLETED (3) Override onPostExecute to display the results in the TextView
+        @Override
+        protected void onPostExecute(Bitmap searchResults) {
+           /* String type="Pothole";
+            String confidence="--";
+            if (searchResults != null && !searchResults.equals("")) {
+                try {
+                    JSONObject json = new JSONObject(searchResults);
+                    if(json.getString("status")=="1"||true){
+                        type= json.getString("type");
+                        confidence = json.getString("confidence");
+                    }
+                }catch(Exception e){
+                    e.printStackTrace();
+                }
+                mTypeSelected= type;
+                mType.setText( type );
+                mConfidence.setText(confidence);
+                //    mDescription.setText(result);
+            */
+        //   Log.d("ImageAndlocation","Inside Post Execute  bitmap:" + searchResults.toString());
+
+           mDisplayImage.setImageBitmap(searchResults);
+
+            }
+        }
+    }
+
+
+
+

@@ -4,6 +4,7 @@ import android.net.Uri;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.util.Log;
+import android.view.View;
 import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.TextView;
@@ -25,7 +26,7 @@ public class StatusViewActivity extends AppCompatActivity {
     ImageView mImageViewPrev;
     ImageView mImageViewNew;
     //Button mCaptureImageButton;
-    //Button mUpdateImageButton;
+    Button mConfirmButton;
 
     FirebaseDatabase mDatabase;
     DatabaseReference mRef;
@@ -47,6 +48,8 @@ public class StatusViewActivity extends AppCompatActivity {
         mImageViewNew= (ImageView)findViewById(R.id.iv_sv_new);
         mImageViewPrev= (ImageView)findViewById(R.id.iv_sv_prev);
 
+        mConfirmButton= (Button) findViewById(R.id.btn_confirm_status_view);
+
         // From activity PostsFragment
         String str = getIntent().getExtras().getString("originalPhotoUri");
         Uri originalPhotoUri = Uri.parse(str);
@@ -54,6 +57,15 @@ public class StatusViewActivity extends AppCompatActivity {
 
         mDatabase = FirebaseDatabase.getInstance();
         mRef = mDatabase.getReference();
+
+        mConfirmButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+
+                mDatabase.getReference().child(AuthorityDisplayActivity.TYPE_COMPLETED).child(key).removeValue();
+                finish();
+            }
+        });
         //.child("Completed");
         mRef.addChildEventListener( new ChildEventListener() {
             @Override

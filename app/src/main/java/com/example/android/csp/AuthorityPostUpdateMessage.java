@@ -41,6 +41,7 @@ public class AuthorityPostUpdateMessage extends PostMessage {
         this.latitude = post.latitude;
         this.longitude = post.longitude;
         this.isVerified= post.isVerified;
+        this.creationDate= post.creationDate;
         this.updatedPhotoUrl= "null";
 
 

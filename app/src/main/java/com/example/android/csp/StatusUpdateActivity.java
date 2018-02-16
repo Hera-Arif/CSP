@@ -1,6 +1,7 @@
 package com.example.android.csp;
 
 import android.content.Intent;
+import android.location.Location;
 import android.net.Uri;
 import android.os.Environment;
 import android.provider.MediaStore;
@@ -16,11 +17,17 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import com.bumptech.glide.Glide;
+import com.google.android.gms.location.FusedLocationProviderClient;
+import com.google.android.gms.location.LocationServices;
+import com.google.android.gms.location.places.Place;
+import com.google.android.gms.location.places.Places;
 import com.google.android.gms.maps.model.BitmapDescriptorFactory;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.MarkerOptions;
+import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.OnFailureListener;
 import com.google.android.gms.tasks.OnSuccessListener;
+import com.google.android.gms.tasks.Task;
 import com.google.firebase.database.ChildEventListener;
 import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
@@ -61,13 +68,17 @@ public class StatusUpdateActivity extends AppCompatActivity {
 
     ProgressBar mProgressBar;
 
+    String type;
+
+    private FusedLocationProviderClient mFusedLocationClient;
+
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_status_update);
-
         final String key = getIntent().getExtras().getString("key");
-        String type = getIntent().getExtras().getString("type");
+        type = getIntent().getExtras().getString("type");
         Toast.makeText(this,key,Toast.LENGTH_LONG).show();
 
         mTextViewPrev= (TextView)findViewById(R.id.tv_su_prev);
@@ -86,10 +97,10 @@ public class StatusUpdateActivity extends AppCompatActivity {
 
         mDatabase = FirebaseDatabase.getInstance();
 
-        mRef = mDatabase.getReference().child("VerifiedPosts");
-        DatabaseReference potholeRef = mRef.child("Pothole");
-        DatabaseReference garbageRef = mRef.child("Garbage");
-        typeRef= mRef.child(type);
+        mRef = mDatabase.getReference();
+        //DatabaseReference potholeRef = mRef.child("Pothole");
+        //DatabaseReference garbageRef = mRef.child("Garbage");
+        typeRef= mRef;
 
         mFirebaseStorage = FirebaseStorage.getInstance();
         mStorageReference = mFirebaseStorage.getReference().child("Images");
@@ -97,37 +108,55 @@ public class StatusUpdateActivity extends AppCompatActivity {
         String uriString = getIntent().getExtras().getString("originalPhotoUri");
         Glide.with(StatusUpdateActivity.this).load(Uri.parse(uriString) ).into(mImageViewPrev);
 
+        mFusedLocationClient = LocationServices.getFusedLocationProviderClient(this);
+
        // mRef=mRef.child(type);
         //Toast.makeText(StatusUpdateActivity.this,"Salim1",Toast.LENGTH_LONG).show();
         mRef.addChildEventListener( new ChildEventListener() {
             @Override
             public void onChildAdded(DataSnapshot dataSnapshot, String s) {
 
+                Toast.makeText(getApplicationContext(),"CSP",Toast.LENGTH_LONG).show();
 
-                Log.d("DatabaseParent",dataSnapshot.toString());
 
 
-                for(DataSnapshot data : dataSnapshot.getChildren()){
+                for(DataSnapshot data : dataSnapshot.getChildren()) {
+                    Log.d("DatabaseParent",dataSnapshot.toString());
+                    Log.d("DatabaseChild", data.toString());
 
-                    Log.d("DatabaseChild",data.toString());
-                    AuthorityPostUpdateMessage updatePost= data.getValue(AuthorityPostUpdateMessage.class);
-                    String currentUserkey = updatePost.getPostKey();
-          //          Toast.makeText(StatusUpdateActivity.this,"Key:"+currentUserkey+" originalKey:"+key+" boolean:"+key.equals(currentUserkey),Toast.LENGTH_LONG).show();
+                    Uri uri = Uri.parse(data.getRef().getParent().toString());
 
-                    if(key.equals(currentUserkey) ){
-                        currentPost=updatePost;
-                        if(currentPost.getUpdatedPhotoUrl().equals("null")){
-                            mTextViewPrev.setText("Status not uploaded yet!");
-            //                Toast.makeText(StatusUpdateActivity.this,"URL:"+updatePost.getPhotoUrl(),Toast.LENGTH_LONG).show();
-                           // Glide.with(StatusUpdateActivity.this).load(updatePost.getPhotoUrl()).into(mImageViewPrev);
-                        }
-                        else{
-                            //Glide.with(StatusUpdateActivity.this).load(currentPost.getUpdatedPhotoUrl()).into(mImageViewPrev);
-                        }
+                    String type = AuthorityDisplayActivity.getTypeSelected();
+
+                    if(!(type.equals(AuthorityDisplayActivity.TYPE_PENDING) || type.equals(AuthorityDisplayActivity.TYPE_COMPLETED)  ) ){
+
+                       type= "VerifiedPosts";
                     }
 
-                   // mMarkerList.add(new MarkerOptions().position(new LatLng(post.getLatitude(),post.getLongitude())).title(post.getType()).snippet(post.getAddress()).icon(BitmapDescriptorFactory.fromResource(R.drawable.mapmarkers_trimmed)) );
+                    Log.d("Database",uri.getLastPathSegment());
 
+                    if (uri.getLastPathSegment().equals(type) ){
+
+                       // Log.d("DatabaseParent",dataSnapshot.toString());
+                        //Log.d("DatabaseChild", data.toString());
+                        AuthorityPostUpdateMessage updatePost = data.getValue(AuthorityPostUpdateMessage.class);
+                        String currentUserkey = updatePost.getPostKey();
+                        Toast.makeText(StatusUpdateActivity.this,"Key:"+currentUserkey+" originalKey:"+key+" boolean:"+key.equals(currentUserkey),Toast.LENGTH_LONG).show();
+
+                        if (key.equals(currentUserkey)) {
+                            currentPost = updatePost;
+                            if (currentPost.getUpdatedPhotoUrl().equals("null")) {
+                                mTextViewPrev.setText("Status not uploaded yet!");
+                                //                Toast.makeText(StatusUpdateActivity.this,"URL:"+updatePost.getPhotoUrl(),Toast.LENGTH_LONG).show();
+                                // Glide.with(StatusUpdateActivity.this).load(updatePost.getPhotoUrl()).into(mImageViewPrev);
+                            } else {
+                                //Glide.with(StatusUpdateActivity.this).load(currentPost.getUpdatedPhotoUrl()).into(mImageViewPrev);
+                            }
+                        }
+
+                        // mMarkerList.add(new MarkerOptions().position(new LatLng(post.getLatitude(),post.getLongitude())).title(post.getType()).snippet(post.getAddress()).icon(BitmapDescriptorFactory.fromResource(R.drawable.mapmarkers_trimmed)) );
+
+                    }
                 }
             }
 
@@ -193,6 +222,62 @@ public class StatusUpdateActivity extends AppCompatActivity {
     mUpdateImageButton.setOnClickListener(new View.OnClickListener() {
         @Override
         public void onClick(View view) {
+
+//
+
+            // TODO : Check classifier output and distance range
+
+           /* try {
+                mFusedLocationClient.getLastLocation()
+                        .addOnSuccessListener(StatusUpdateActivity.this, new OnSuccessListener<Location>() {
+                            @Override
+                            public void onSuccess(Location location) {
+                                // Got last known location. In some rare situations this can be null.
+                                if (location != null) {
+                                    // Logic to handle location object
+
+                                    if(location.getLatitude()-currentPost.getLatitude()<0.01 && location.getLatitude()-currentPost.getLatitude()<0.01){
+
+                                    if(currentPost.getType.equals("Pothole")){
+                                    classifierTask();
+                                    }
+                                    else{
+                                    postUpdate();
+                                    }
+                                }else
+                                Toast.makeText().toShow();
+                            }
+                        });
+
+            }catch(SecurityException e){
+                e.printStackTrace();
+            }*/
+
+            DatabaseReference nonVerifiedRef = mDatabase.getReference().child("Non-VerifiedPosts");
+            DatabaseReference verifiedRef = mDatabase.getReference().child("VerifiedPosts");
+            DatabaseReference pendingRef = mDatabase.getReference().child("Pending");
+
+            nonVerifiedRef.child(currentPost.getPostKey()).removeValue().addOnCompleteListener(new OnCompleteListener<Void>() {
+                @Override
+                public void onComplete(@NonNull Task<Void> task) {
+                    Log.d("Removing nonverifi post","isComplete? :"+task.isComplete());
+                }
+            });
+            verifiedRef.child(currentPost.getPostKey()).removeValue().addOnCompleteListener(new OnCompleteListener<Void>() {
+                @Override
+                public void onComplete(@NonNull Task<Void> task) {
+                    Log.d("Removing verified post","isComplete? :"+task.isComplete());
+
+                }
+            });
+
+            pendingRef.child(currentPost.getPostKey()).removeValue().addOnCompleteListener(new OnCompleteListener<Void>() {
+                @Override
+                public void onComplete(@NonNull Task<Void> task) {
+                    Log.d("Removing nonverifi post","isComplete? :"+task.isComplete());
+                }
+            });
+
             StorageReference childReference =mStorageReference.child(mPhotoUri.getLastPathSegment() );
             mProgressBar.setEnabled(true);
             mProgressBar.setVisibility(View.VISIBLE);
@@ -205,14 +290,12 @@ public class StatusUpdateActivity extends AppCompatActivity {
                     if(mdownloadUri!=null){
 
                         currentPost.setUpdatedPhotoUrl(mdownloadUri.toString());
-                        typeRef.child(currentPost.getPostKey()).setValue(currentPost);
-                        DatabaseReference keyRef = mStatusUpdateRef.child(currentPost.getPostKey());
-                        String key =keyRef.getKey();
 
+                     //   typeRef.child(currentPost.getPostKey()).setValue(currentPost);
 
+                        mStatusUpdateRef = mDatabase.getReference().child("Completed");
+                        mStatusUpdateRef.child(currentPost.getPostKey()).setValue(currentPost);
 
-
-                        keyRef.setValue(currentPost);
                         mProgressBar.setEnabled(false);
                         mProgressBar.setVisibility(View.INVISIBLE);
                         Toast.makeText(StatusUpdateActivity.this, "Image Upload Success", Toast.LENGTH_LONG).show();

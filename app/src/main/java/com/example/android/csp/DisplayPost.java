@@ -63,10 +63,21 @@ public class DisplayPost extends AppCompatActivity {
         //Initializing viewPager
         viewPager = (ViewPager) findViewById(R.id.viewpager);
         viewPager.setOffscreenPageLimit(3);
-        setupViewPager(viewPager);
+
 
         //Initializing the tablayout
         tabLayout = (TabLayout) findViewById(R.id.tablayout);
+
+
+
+    }
+
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+
+        setupViewPager(viewPager);
 
         tabLayout.addOnTabSelectedListener(new TabLayout.OnTabSelectedListener() {
             @Override
@@ -106,9 +117,8 @@ public class DisplayPost extends AppCompatActivity {
 
 
 
+
     }
-
-
 
     private void setupViewPager(ViewPager viewPager)
     {
@@ -117,7 +127,7 @@ public class DisplayPost extends AppCompatActivity {
         notificationsFragment=new NotificationsFragment();
         mapFragment=new MapFragment();
         adapter.addFragment(postsFragment,"POSTS");
-        adapter.addFragment(notificationsFragment,"NOTIFICATION");
+        adapter.addFragment(notificationsFragment,"FILTER");
         adapter.addFragment(mapFragment,"MAP");
         viewPager.setAdapter(adapter);
     }
