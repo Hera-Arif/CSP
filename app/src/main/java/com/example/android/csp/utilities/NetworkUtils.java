@@ -38,7 +38,7 @@ import okhttp3.Response;
 public class NetworkUtils {
 
 
-    final static String BASE_URL ="http://192.168.0.101:5000/";
+    final static String BASE_URL ="http:// 192.168.43.208:5000/";
            // "http://(ipaddress ipv4):5000/search/";
 
     final static String SAVE_URL = BASE_URL+"save";
